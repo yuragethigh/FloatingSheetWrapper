@@ -54,29 +54,32 @@ internal struct ScrollViewModifier<ScrollContent: View, HeaderContent: View>: Vi
                     
                     GeometryReader { proxy in
                         
-                        ScrollViewWrapper(
-                            thresholds: thresholds,
-                            currentIndex: $currentState,
-                            contentOffset: $contentOffset,
-                            updateContent: $updateContent,
-                            scrollIsEnambled: $scrollIsEnambled
-                        ) {
-                            scrollContent
-                        }
+                        VStack(spacing: 0) {
+                            
+                            headerContent
+                                .gesture(gesture)
+                            
+                            ScrollViewWrapper(
+                                thresholds: thresholds,
+                                currentIndex: $currentState,
+                                contentOffset: $contentOffset,
+                                updateContent: $updateContent,
+                                scrollIsEnambled: $scrollIsEnambled
+                            ) {
+                                scrollContent
+                            }
+                            
+                        } // : VStack
+                        
                         .background(
                             backgroundColor
-                        )
-                        .overlay(
-                            headerContent
-                                .allowsHitTesting(false)
-                            ,alignment: .top
                         )
                         .cornerRadius(
                             cornerRadius,
                             corners: [.topLeft, .topRight]
                         )
                         .animation(
-                            .spring(duration: 0.25, bounce: 0.25),
+                            .spring(duration: 0.25),
                             value: contentOffset
                         )
                         .animation(
@@ -90,7 +93,7 @@ internal struct ScrollViewModifier<ScrollContent: View, HeaderContent: View>: Vi
                 
             } // : ZStack
             .frame(
-                height: thresholds[currentState] + contentOffset
+                height: calculateHeight()
             )
             .animation(
                 .spring(duration: 0.2),
@@ -99,5 +102,42 @@ internal struct ScrollViewModifier<ScrollContent: View, HeaderContent: View>: Vi
             
         }  // : ZStack
     }
+    
+    private func calculateHeight() -> CGFloat {
+        return max(thresholds[currentState] + contentOffset, thresholds.first ?? 0)
+    }
+
+    
+    private var gesture: some Gesture {
+        DragGesture()
+            .onChanged({ value in
+                let translation = -value.translation.height
+                
+                contentOffset = translation
+            })
+            .onEnded { value in
+                let velocity = -value.velocity.height
+                let thresholdVelocity = 100.0
+                let currentY = thresholds[currentState] + contentOffset
+
+                if velocity > thresholdVelocity {
+                    currentState = min(currentState + 1, thresholds.count - 1)
+                    contentOffset = 0
+
+                } else if velocity < -thresholdVelocity {
+                    currentState = max(currentState - 1, 0)
+                    contentOffset = 0
+
+                } else {
+                    let nearestIndex = thresholds
+                        .enumerated()
+                        .min(by: { abs($0.element - currentY) < abs($1.element - currentY) })?.offset ?? currentState
+
+                    currentState = nearestIndex
+                    contentOffset = 0
+                }
+            }
+    }
+
 }
 
