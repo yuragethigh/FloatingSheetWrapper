@@ -8,7 +8,7 @@
 import SwiftUI
 
 public extension View {
-    func floatingSheet<ScrollContent: View, HeaderContent: View>(
+    func scrollViewWrapper<ScrollContent: View, HeaderContent: View, ButtonClosed: View>(
         isShowSheet: Binding<Bool> = .constant(true),
         currentState: Binding<Int> = .constant(0),
         updateContent: Binding<Bool> = .constant(false),
@@ -17,7 +17,9 @@ public extension View {
         backgroundColor: Color = .white,
         cornerRadius: CGFloat = 20,
         @ViewBuilder scrollContent: @escaping () -> ScrollContent,
-        @ViewBuilder headerContent: @escaping () -> HeaderContent
+        @ViewBuilder headerContent: @escaping () -> HeaderContent,
+        @ViewBuilder buttonClosed: @escaping () -> ButtonClosed
+
     ) -> some View {
         self.modifier(
             ScrollViewModifier(
@@ -29,7 +31,8 @@ public extension View {
                 backgroundColor: backgroundColor,
                 cornerRadius: cornerRadius,
                 scrollContent: scrollContent,
-                headerContent: headerContent
+                headerContent: headerContent,
+                buttonClosed: buttonClosed
             )
         )
     }

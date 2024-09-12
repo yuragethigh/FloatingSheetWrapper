@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-internal struct ScrollViewModifier<ScrollContent: View, HeaderContent: View>: ViewModifier {
-    
+internal struct ScrollViewModifier<ScrollContent: View, HeaderContent: View, ButtonClosed: View>: ViewModifier {
+
     @State private var contentOffset: CGFloat = .zero
     @Binding private var isShowSheet: Bool
     @Binding private var currentState: Int
@@ -19,7 +19,8 @@ internal struct ScrollViewModifier<ScrollContent: View, HeaderContent: View>: Vi
     private let cornerRadius: CGFloat
     private let scrollContent: ScrollContent
     private let headerContent: HeaderContent
-    
+    private let buttonClosed: ButtonClosed
+
     init(
         isShowSheet: Binding<Bool>,
         currentState: Binding<Int>,
@@ -29,7 +30,8 @@ internal struct ScrollViewModifier<ScrollContent: View, HeaderContent: View>: Vi
         backgroundColor: Color,
         cornerRadius: CGFloat,
         @ViewBuilder scrollContent: () -> ScrollContent,
-        @ViewBuilder headerContent: () -> HeaderContent
+        @ViewBuilder headerContent: () -> HeaderContent,
+        @ViewBuilder buttonClosed: () -> ButtonClosed
     ) {
         self._isShowSheet = isShowSheet
         self._currentState = currentState
@@ -40,104 +42,81 @@ internal struct ScrollViewModifier<ScrollContent: View, HeaderContent: View>: Vi
         self.cornerRadius = cornerRadius
         self.scrollContent = scrollContent()
         self.headerContent = headerContent()
+        self.buttonClosed = buttonClosed()
     }
-    
+
     func body(content: Content) -> some View {
-        
+
         ZStack(alignment: .bottom) {
-            
+
             content
-            
+
             ZStack(alignment: .bottom) {
-                
+
                 if isShowSheet {
-                    
+
                     GeometryReader { proxy in
-                        
-                        VStack(spacing: 0) {
-                            
-                            headerContent
-                                .gesture(gesture)
-                            
-                            ScrollViewWrapper(
-                                thresholds: thresholds,
-                                currentIndex: $currentState,
-                                contentOffset: $contentOffset,
-                                updateContent: $updateContent,
-                                scrollIsEnambled: $scrollIsEnambled
-                            ) {
-                                scrollContent
-                            }
-                            
-                        } // : VStack
-                        
+
+                        ScrollViewWrapper(
+                            thresholds: thresholds,
+                            currentIndex: $currentState,
+                            contentOffset: $contentOffset,
+                            updateContent: $updateContent,
+                            scrollIsEnambled: $scrollIsEnambled
+                        ) {
+                            scrollContent
+                        }
                         .background(
                             backgroundColor
+                        )
+                        .overlay(
+                            headerContent
+                                .allowsHitTesting(false)
+                            ,alignment: .top
+                        )
+                        .overlay(
+                            buttonClosed, alignment: .topTrailing
                         )
                         .cornerRadius(
                             cornerRadius,
                             corners: [.topLeft, .topRight]
                         )
                         .animation(
-                            .spring(duration: 0.25),
+                            .spring(duration: 0.25, bounce: 0.25),
                             value: contentOffset
                         )
                         .animation(
                             .spring(duration: 0.25),
                             value: currentState
                         )
-                        
+                        .onChange(of: currentState) { newValue in
+                            guard newValue == 0 else  {
+                                return
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                isShowSheet = false
+                            }
+                        }
+                        .onDisappear{
+                            print("onDisappear")
+                        }
+
                     } // : GeometryReader
                     .transition(.move(edge: .bottom))
                 }
-                
+
             } // : ZStack
             .frame(
-                height: calculateHeight()
+                height: calculateHeight
             )
             .animation(
                 .spring(duration: 0.2),
                 value: isShowSheet
             )
-            
+
         }  // : ZStack
     }
-    
-    private func calculateHeight() -> CGFloat {
-        return max(thresholds[currentState] + contentOffset, thresholds.first ?? 0)
+    private var calculateHeight: CGFloat {
+        return thresholds[currentState] + contentOffset
     }
-
-    
-    private var gesture: some Gesture {
-        DragGesture()
-            .onChanged({ value in
-                let translation = -value.translation.height
-                
-                contentOffset = translation
-            })
-            .onEnded { value in
-                let velocity = -value.velocity.height
-                let thresholdVelocity = 100.0
-                let currentY = thresholds[currentState] + contentOffset
-
-                if velocity > thresholdVelocity {
-                    currentState = min(currentState + 1, thresholds.count - 1)
-                    contentOffset = 0
-
-                } else if velocity < -thresholdVelocity {
-                    currentState = max(currentState - 1, 0)
-                    contentOffset = 0
-
-                } else {
-                    let nearestIndex = thresholds
-                        .enumerated()
-                        .min(by: { abs($0.element - currentY) < abs($1.element - currentY) })?.offset ?? currentState
-
-                    currentState = nearestIndex
-                    contentOffset = 0
-                }
-            }
-    }
-
 }
-
