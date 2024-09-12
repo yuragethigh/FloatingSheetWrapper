@@ -89,17 +89,6 @@ internal struct ScrollViewModifier<ScrollContent: View, HeaderContent: View, But
                             .spring(duration: 0.25),
                             value: currentState
                         )
-                        .onChange(of: currentState) { newValue in
-                            guard newValue == 0 else  {
-                                return
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                isShowSheet = false
-                            }
-                        }
-                        .onDisappear{
-                            print("onDisappear")
-                        }
 
                     } // : GeometryReader
                     .transition(.move(edge: .bottom))
