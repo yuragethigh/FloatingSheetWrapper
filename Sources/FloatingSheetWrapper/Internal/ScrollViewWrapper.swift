@@ -48,7 +48,9 @@ internal struct ScrollViewWrapper<Content: View>: UIViewRepresentable {
     func updateUIView(_ sv: UIScrollView, context: UIViewRepresentableContext<ScrollViewWrapper>) {
         if updateContent {
             layoutContent(sv)
-            updateContent = false
+            DispatchQueue.main.async {
+                updateContent = false
+            }
         }
     }
 
