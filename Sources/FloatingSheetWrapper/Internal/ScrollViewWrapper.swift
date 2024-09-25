@@ -47,6 +47,7 @@ internal struct ScrollViewWrapper<Content: View>: UIViewRepresentable {
 
     func updateUIView(_ sv: UIScrollView, context: UIViewRepresentableContext<ScrollViewWrapper>) {
         if updateContent {
+            sv.subviews.forEach { $0.removeFromSuperview() }
             layoutContent(sv)
             DispatchQueue.main.async {
                 updateContent = false
