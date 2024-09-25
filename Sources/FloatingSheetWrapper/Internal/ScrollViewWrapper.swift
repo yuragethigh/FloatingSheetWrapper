@@ -50,6 +50,7 @@ internal struct ScrollViewWrapper<Content: View>: UIViewRepresentable {
             layoutContent(sv)
             DispatchQueue.main.async {
                 updateContent = false
+                
             }
         }
     }
