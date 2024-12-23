@@ -39,7 +39,7 @@ internal struct ScrollViewWrapper<Content: View>: UIViewRepresentable {
         sv.alwaysBounceVertical = true
         sv.showsVerticalScrollIndicator = false
         sv.delegate = context.coordinator
-
+        
         layoutContent(sv)
 
         return sv
@@ -72,7 +72,6 @@ internal struct ScrollViewWrapper<Content: View>: UIViewRepresentable {
         ])
         controller.view.layoutIfNeeded()
         controller.view.setNeedsLayout()
-
     }
 
     func makeCoordinator() -> Coordinator {
@@ -100,7 +99,7 @@ internal struct ScrollViewWrapper<Content: View>: UIViewRepresentable {
         }
 
         deinit {
-            //            print("deinit")
+            // print("deinit")
         }
 
         private enum DragState {
@@ -109,7 +108,6 @@ internal struct ScrollViewWrapper<Content: View>: UIViewRepresentable {
 
         private var dragState: DragState = .drag
         private var decelerate: Bool = true
-
 
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
             let yOffset = scrollView.contentOffset.y
@@ -122,52 +120,50 @@ internal struct ScrollViewWrapper<Content: View>: UIViewRepresentable {
             }
 
             let getSizeY = thresholds[currentIndex] + contentOffset
-
+//            print("# get size - \(getSizeY)")
+//            print("# view height - \(viewHeight)")
             switch dragState {
             case .drag:
-
                 if getSizeY >= viewHeight {
-                    currentIndex = thresholds.count - 1
+                    scrollView.setContentOffset(.zero, animated: false)
                     contentOffset = 0
                     dragState = .scroll
-                    scrollView.setContentOffset(CGPoint.zero, animated: false)
-
+                    currentIndex = thresholds.count - 1
                 } else {
                     scrollView.contentOffset.y = 0
                     guard getSizeY >= minHeight else {
                         return
                     }
                     contentOffset += yOffset
-
                 }
-
+                
             case .scroll:
-
                 if yOffset < 0 {
                     scrollView.contentOffset.y = 0
                     contentOffset += yOffset
                     dragState = .drag
-
                 } else if decelerate {
-
                     dragState = .bounce
                 }
-
+                
             case .bounce:
-
+                
                 decelerate = false
-                if yOffset == 0 {
-
-                    self.dragState = .scroll
+                if yOffset < 0 {
+                    scrollView.contentOffset.y = 0
+                    scrollView.setContentOffset(.zero, animated: false)
+                    self.dragState = .drag
                 }
             }
-
         }
+
 
         private func switchSize(_ scrollView: UIScrollView) {
             let currentY = thresholds[currentIndex] + contentOffset
 
-            let nearestIndex = thresholds.enumerated().min(by: { abs($0.element - currentY) < abs($1.element - currentY) })?.offset ?? currentIndex
+            let nearestIndex = thresholds
+                .enumerated()
+                .min(by: { abs($0.element - currentY) < abs($1.element - currentY) })?.offset ?? currentIndex
 
             currentIndex = nearestIndex
             contentOffset = 0
@@ -176,7 +172,6 @@ internal struct ScrollViewWrapper<Content: View>: UIViewRepresentable {
 
         func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
             switchSize(scrollView)
-
             if dragState != .bounce {
                 self.decelerate = decelerate
             }
@@ -184,22 +179,24 @@ internal struct ScrollViewWrapper<Content: View>: UIViewRepresentable {
 
         func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
 
-            let thresholdVelocity = 1.5
+            let thresholdVelocity: Double = 1
 
             guard dragState == .drag else {
                 return
             }
-            targetContentOffset.pointee.y = 0
 
             if velocity.y > thresholdVelocity {
                 currentIndex = min(currentIndex + 1, thresholds.count - 1)
-                contentOffset = 0
-
             } else if velocity.y < -thresholdVelocity {
                 currentIndex = max(currentIndex - 1, 0)
-                contentOffset = 0
-
+            } else {
+                switchSize(scrollView)
             }
+            
+            scrollView.setContentOffset(.zero, animated: false)
+            targetContentOffset.pointee.y = 0
+            scrollView.contentOffset.y = 0
+            contentOffset = 0
         }
     }
 }
